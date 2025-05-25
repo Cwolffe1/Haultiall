@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Haul It All</title>
+  <style>
+    :root {
+      --primary-color: #555;
+      --secondary-color: #777;
+      --background-color: #f0f0f0; /* light grey */
+      --text-color: #2c2c2c;
+      --header-bg: #001f3f; /* navy blue */
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: var(--background-color);
+      color: var(--text-color);
+      line-height: 1.6;
+    }
+    header {
+      background-color: var(--header-bg);
+      color: white;
+      padding: 30px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .logo {
+      max-width: 120px;
+    }
+    .flags {
+      display: flex;
+      gap: 10px;
+    }
+    .flags img {
+      width: 60px;
+      height: auto;
+      border-radius: 4px;
+      box-shadow: 0 0 4px rgba(0,0,0,0.2);
+    }
+    .header-title {
+      text-align: center;
+      flex-grow: 1;
+    }
+    .header-title h1 {
+      font-family: 'Georgia', serif;
+      font-size: 2.5em;
+      margin: 0;
+      color: white;
+    }
+    .header-title p {
+      margin: 5px 0 0;
+      color: white;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    section {
+      background: #3a3a3a;
+      margin-top: 30px;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      color: #f0f0f0;
+    }
+    h2 {
+      color: #cccccc;
+      border-bottom: 2px solid #666;
+      padding-bottom: 5px;
+    }
+    ul {
+      list-style-type: disc;
+      padding-left: 20px;
+    }
+    footer {
+      background-color: #111;
+      color: white;
+      text-align: center;
+      padding: 20px;
+      margin-top: 40px;
+    }
+    form input, form textarea, form button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      border: 1px solid #555;
+      border-radius: 6px;
+      font-size: 1em;
+      background-color: #1e1e1e;
+      color: white;
+    }
+    form button {
+      background-color: #666;
+      color: white;
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    form button:hover {
+      background-color: #888;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="/mnt/data/45f4d824-4147-4413-ad1e-fdd4cc74cdde.png" alt="Haul It All Logo" class="logo">
+    <div class="header-title">
+      <h1>Haul It All</h1>
+      <p>Reliable Junk Removal Services in Houston, TX</p>
+    </div>
+    <div class="flags">
+      <img src="https://upload.wikimedia.org/wikipedia/en/a/a4/Flag_of_the_United_States.svg" alt="American Flag">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/f/f7/Flag_of_Texas.svg" alt="Texas Flag">
+    </div>
+  </header>
+
+  <div class="container">
+    <section class="services">
+      <h2>Materials Eligible for Pickup</h2>
+      <ul>
+        <li>Bulk construction materials</li>
+        <li>Wood and lumber</li>
+        <li>Bricks</li>
+        <li>Plastic</li>
+        <li>Metals</li>
+        <li>Furniture</li>
+        <li>Cloth or linen materials</li>
+        <li>Appliances (no Freon)</li>
+        <li>Trees, Dirt, Stumps</li>
+        <li>Animal Waste</li>
+        <li>Non-Friable Asbestos</li>
+        <li>Construction & Demolition Waste</li>
+        <li>Carpet Material</li>
+        <li>Dry Industrial Waste</li>
+        <li>Municipal Solid Waste</li>
+        <li>Tires (Auto)</li>
+        <li>Yard Waste</li>
+      </ul>
+    </section>
+
+    <section class="contact">
+      <h2>Contact Us</h2>
+      <p><strong>📍 Location:</strong> Houston, TX 77098</p>
+      <p><strong>📞 Phone:</strong> 713-380-0550</p>
+      <p><strong>📧 Email:</strong> haulitallservice@gmail.com</p>
+    </section>
+
+    <section class="quote">
+      <h2>Request a Free Quote</h2>
+      <form action="https://formspree.io/f/mwpodvov" method="POST">
+        <input type="text" name="name" placeholder="Your Name" required>
+        <input type="email" name="email" placeholder="Your Email" required>
+        <textarea name="message" rows="5" placeholder="Describe your hauling needs" required></textarea>
+        <button type="submit">Send Request</button>
+      </form>
+    </section>
+  </div>
+
+  <footer>
+    <p>&copy; 2025 Haul It All. All rights reserved.</p>
+  </footer>
+</body>
+</html>
