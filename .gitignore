@@ -20,3 +20,6 @@ server/.env
 # Logs
 *.log
 npm-debug.log*
+
+# Temp / tooling downloads
+pagekite.py
