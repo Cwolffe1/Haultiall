@@ -91,7 +91,10 @@ export default function GeneratorForm({
       await new Promise((r) => setTimeout(r, 600));
       setStage(STAGES.GENERATING);
 
-      const res = await fetch('/api/generate', {
+      // In dev, Vite proxies /api → localhost:3001.
+      // In production (Vercel), VITE_API_URL points to the Render backend.
+      const API_BASE = import.meta.env.VITE_API_URL || '';
+      const res = await fetch(`${API_BASE}/api/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ youtubeUrl: url.trim(), gradeLevel }),
