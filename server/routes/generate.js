@@ -6,12 +6,27 @@ const { YoutubeTranscript } = require('youtube-transcript');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Extract YouTube video ID from various URL formats */
+/** Extract YouTube video ID from all known URL formats */
 function extractVideoId(url) {
+  // Strip leading/trailing whitespace
+  url = url.trim();
+
+  // Handle bare 11-char video IDs (no URL structure)
+  if (/^[a-zA-Z0-9_-]{11}$/.test(url)) return url;
+
   const patterns = [
-    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)([a-zA-Z0-9_-]{11})/,
+    // Standard watch URLs: youtube.com/watch?v=ID  (with any other query params)
+    /[?&]v=([a-zA-Z0-9_-]{11})/,
+    // Short URLs: youtu.be/ID
+    /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+    // Embed / v: youtube.com/embed/ID  youtube.com/v/ID
+    /youtube\.com\/(?:embed|v)\/([a-zA-Z0-9_-]{11})/,
+    // Shorts:  youtube.com/shorts/ID
     /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+    // Live:    youtube.com/live/ID
+    /youtube\.com\/live\/([a-zA-Z0-9_-]{11})/,
   ];
+
   for (const pattern of patterns) {
     const match = url.match(pattern);
     if (match) return match[1];
@@ -19,12 +34,30 @@ function extractVideoId(url) {
   return null;
 }
 
-/** Fetch and join YouTube transcript text */
+/** Fetch and join YouTube transcript text, with language fallback */
 async function fetchTranscript(videoId) {
-  const segments = await YoutubeTranscript.fetchTranscript(videoId, { lang: 'en' });
-  if (!segments || segments.length === 0) {
-    throw new Error('No transcript available for this video. Make sure the video has closed captions enabled.');
+  let segments;
+
+  // Try without language constraint first (works for all caption types)
+  try {
+    segments = await YoutubeTranscript.fetchTranscript(videoId);
+  } catch (err) {
+    // Some packages throw specific error classes — surface the real message
+    const msg = err.message || String(err);
+    if (msg.toLowerCase().includes('disabled') || msg.toLowerCase().includes('no transcript')) {
+      throw new Error(
+        'This video does not have captions enabled. Try a video that has CC/subtitles turned on.',
+      );
+    }
+    throw new Error(`Could not fetch transcript: ${msg}`);
   }
+
+  if (!segments || segments.length === 0) {
+    throw new Error(
+      'No transcript found for this video. Make sure the video has closed captions (CC) enabled.',
+    );
+  }
+
   return segments.map((s) => s.text).join(' ');
 }
 

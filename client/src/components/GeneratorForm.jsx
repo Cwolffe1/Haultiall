@@ -40,8 +40,14 @@ export default function GeneratorForm({
 
   const isLoading = [STAGES.TRANSCRIPT, STAGES.GENERATING, STAGES.PDF].includes(stage);
 
-  function validateUrl(val) {
-    return /(?:youtube\.com\/watch|youtu\.be\/|youtube\.com\/shorts\/)/.test(val);
+  /** Mirrors the server-side parser — returns true if the string looks like something we can handle */
+  function looksLikeYouTube(val) {
+    return (
+      /[?&]v=([a-zA-Z0-9_-]{11})/.test(val) ||       // ?v=ID
+      /youtu\.be\/([a-zA-Z0-9_-]{11})/.test(val) ||   // youtu.be/ID
+      /youtube\.com\/(embed|v|shorts|live)\/([a-zA-Z0-9_-]{11})/.test(val) || // embed/v/shorts/live
+      /^[a-zA-Z0-9_-]{11}$/.test(val)                 // bare 11-char ID
+    );
   }
 
   async function handleSubmit(e) {
@@ -58,8 +64,10 @@ export default function GeneratorForm({
       setError('Please enter a YouTube URL.');
       return;
     }
-    if (!validateUrl(url.trim())) {
-      setError('That doesn\'t look like a YouTube URL. Try: https://youtube.com/watch?v=...');
+    if (!looksLikeYouTube(url.trim())) {
+      setError(
+        'That doesn\'t look like a YouTube URL. Paste the full URL from your browser, e.g. https://youtube.com/watch?v=...'
+      );
       return;
     }
     if (!gradeLevel) {
@@ -163,13 +171,15 @@ export default function GeneratorForm({
               <span className="url-icon">▶</span>
               <input
                 id="yt-url"
-                type="url"
+                type="text"
                 className="field-input url-input"
                 placeholder="https://youtube.com/watch?v=..."
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 disabled={isLoading}
                 autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
                 spellCheck={false}
               />
             </div>
