@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+server/node_modules/
+client/node_modules/
+
+# Build output
+client/dist/
+client/.vite/
+
+# Environment
+.env
+.env.local
+server/.env
+
+# Editor
+.DS_Store
+.vscode/
+*.swp
+
+# Logs
+*.log
+npm-debug.log*
+
+# Temp / tooling downloads
+pagekite.py

@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: haultiall-api
+    env: node
+    region: oregon
+    rootDir: server
+    buildCommand: npm install
+    startCommand: node index.js
+    plan: free
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false          # you'll paste this in the Render dashboard
+      - key: CLIENT_URL
+        sync: false          # paste your Vercel URL here after deploying frontend
+      - key: PORT
+        value: 10000         # Render's default port
