@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="x-apple-disable-message-reformatting">
+  <title></title>
+</head>
+<!--
+  STATION — cold email wrapper (GHL conversations API / n8n "Build Final Email" node)
+
+  Markers replaced at runtime by n8n:
+    {{BODY}}        — per-lead paragraphs, arrive as <p style="margin:0 0 16px;">...</p> blocks
+    {{BOOKING_URL}} — booking link for the CTA button
+    {{LOGO_URL}}    — hosted logo (GHL Media Library). Use the dark charcoal lockup on white.
+                      Export at 2x (72px tall) and let height="36" scale it down for retina.
+                      To ship without a logo, delete the whole "LOGO SLOT" <tr> below.
+
+  Reusable snippets (for injection inside body text if needed):
+
+    Booking CTA button (same as the one rendered below):
+      <a href="{{BOOKING_URL}}" target="_blank" style="display:inline-block; background-color:#178af6; color:#ffffff; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; line-height:20px; text-decoration:none; padding:11px 22px; border-radius:6px;">Book a 15-minute call</a>
+
+    Inline text link (video / mockup links):
+      <a href="URL_HERE" target="_blank" style="color:#178af6; text-decoration:underline;">anchor text here</a>
+
+  NOTE: this wrapper already contains the compliance footer. Disable the node's
+  separate "append STOP line" step or it will appear twice.
+-->
+<body style="margin:0; padding:0; background-color:#ffffff;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;">
+    <tr>
+      <td align="center" style="padding:24px 16px;">
+
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px;">
+
+          <!-- ===== LOGO SLOT (optional — delete this <tr> to send without a logo) ===== -->
+          <tr>
+            <td align="left" style="padding:0 0 28px;">
+              <img src="{{LOGO_URL}}" alt="Station" height="36" style="display:block; height:36px; width:auto; border:0; outline:none;">
+            </td>
+          </tr>
+          <!-- ===== /LOGO SLOT ===== -->
+
+          <!-- ===== BODY ===== -->
+          <tr>
+            <td align="left" style="font-family:Arial, Helvetica, sans-serif; font-size:15px; line-height:23px; color:#20262b;">
+{{BODY}}
+            </td>
+          </tr>
+          <!-- ===== /BODY ===== -->
+
+          <!-- ===== BOOKING CTA ===== -->
+          <tr>
+            <td align="left" style="padding:8px 0 0;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="center" bgcolor="#178af6" style="border-radius:6px;">
+                    <a href="{{BOOKING_URL}}" target="_blank" style="display:inline-block; background-color:#178af6; color:#ffffff; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; line-height:20px; text-decoration:none; padding:11px 22px; border-radius:6px;">Book a 15-minute call</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- ===== /BOOKING CTA ===== -->
+
+          <!-- ===== COMPLIANCE FOOTER ===== -->
+          <tr>
+            <td align="left" style="padding:32px 0 0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="border-top:1px solid #e6e6e6; font-size:0; line-height:0;">&nbsp;</td>
+                </tr>
+                <tr>
+                  <td align="left" style="padding:12px 0 0; font-family:Arial, Helvetica, sans-serif; font-size:12px; line-height:18px; color:#888888;">Reply STOP to opt out of future messages.</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- ===== /COMPLIANCE FOOTER ===== -->
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
