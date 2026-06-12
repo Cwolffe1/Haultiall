@@ -1,0 +1,211 @@
+{
+  "name": "Telegram → AI Prospecting (CRM)",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": ["message"],
+        "additionalFields": {}
+      },
+      "id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [-600, 0],
+      "webhookId": "f3a9c1e2-7b41-4c8d-9e55-1a2b3c4d5e01"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ── Conversation State Machine ───────────────────────────────\n// Tracks each Telegram chat's progress through the 6 questions,\n// then asks for a YES/NO confirmation before firing the CRM call.\n// State persists via workflow static data (only when the workflow\n// is ACTIVE — test executions don't persist state).\n\nconst staticData = $getWorkflowStaticData('global');\nconst msg = $input.first().json.message ?? {};\nconst chatId = String(msg.chat?.id ?? '');\nconst text = (msg.text || '').trim();\nconst lower = text.toLowerCase();\n\nconst QUESTIONS = [\n  { key: 'targeting',  prompt: '🎯 1/6 — Who are you targeting?\\n(industry, job title, company size, location)' },\n  { key: 'goal',       prompt: '🥅 2/6 — What is your goal with these prospects?\\n(cold outreach, demos, partnerships, etc.)' },\n  { key: 'tone',       prompt: '🗣️ 3/6 — What tone or message style?\\n(formal, casual, direct)' },\n  { key: 'volume',     prompt: '🔢 4/6 — How many prospects do you want?' },\n  { key: 'exclusions', prompt: '🚫 5/6 — Any exclusions?\\n(existing clients, competitors, regions to avoid — or say \"none\")' },\n  { key: 'channel',    prompt: '📡 6/6 — What channel will you reach out on?\\n(email, SMS, LinkedIn, etc.)' }\n];\n\nif (!staticData.sessions) staticData.sessions = {};\n\nconst reply = (action, replyText, payload = null) =>\n  [{ json: { chatId, action, replyText, payload } }];\n\n// ── Start / restart ──\nif (!staticData.sessions[chatId] || lower === '/start' || lower === '/restart' || lower === 'restart') {\n  staticData.sessions[chatId] = { step: 0, answers: {} };\n  return reply('ask',\n    `👋 Let's find you some prospects! I'll ask 6 quick questions.\\n` +\n    `(Type /restart at any time to start over.)\\n\\n${QUESTIONS[0].prompt}`);\n}\n\nconst session = staticData.sessions[chatId];\n\n// ── Awaiting YES/NO confirmation ──\nif (session.step === 'confirm') {\n  if (['yes', 'y', '✅', 'confirm'].includes(lower)) {\n    const payload = {\n      chat_id: chatId,\n      requested_at: new Date().toISOString(),\n      ...session.answers\n    };\n    delete staticData.sessions[chatId];\n    return reply('fire',\n      `🚀 Launching the AI Prospecting workflow now — I'll message you here when the results are in!`,\n      payload);\n  }\n  if (['no', 'n', '❌'].includes(lower)) {\n    session.step = 0;\n    session.answers = {};\n    return reply('ask', `No problem — let's run through it again.\\n\\n${QUESTIONS[0].prompt}`);\n  }\n  return reply('ask', `Please reply YES to launch or NO to start over. 🙂`);\n}\n\n// ── Collecting answers (vague-answer guard) ──\nif (text.length < 2) {\n  return reply('ask', `Could you give me a bit more detail? 🙏\\n\\n${QUESTIONS[session.step].prompt}`);\n}\n\nsession.answers[QUESTIONS[session.step].key] = text;\nsession.step += 1;\n\nif (session.step < QUESTIONS.length) {\n  return reply('ask', QUESTIONS[session.step].prompt);\n}\n\n// ── All 6 answered → confirmation summary ──\nsession.step = 'confirm';\nconst a = session.answers;\nconst summary =\n  `📋 Here's what I have:\\n\\n` +\n  `🎯 Targeting: ${a.targeting}\\n` +\n  `🥅 Goal: ${a.goal}\\n` +\n  `🗣️ Tone: ${a.tone}\\n` +\n  `🔢 Volume: ${a.volume}\\n` +\n  `🚫 Exclusions: ${a.exclusions}\\n` +\n  `📡 Channel: ${a.channel}\\n\\n` +\n  `Does this look right? Reply YES to launch or NO to start over.`;\nreturn reply('ask', summary);"
+      },
+      "id": "a1b2c3d4-0002-4000-8000-000000000002",
+      "name": "Conversation Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-360, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "c0nd0001-0000-4000-8000-000000000001",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "fire",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0003-4000-8000-000000000003",
+      "name": "Ready to Fire?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-120, 0]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.replyText }}",
+        "additionalFields": {}
+      },
+      "id": "a1b2c3d4-0004-4000-8000-000000000004",
+      "name": "Send Launch Message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [140, -120]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR-CRM-WEBHOOK-URL-HERE",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Conversation Logic').first().json.payload) }}",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0005-4000-8000-000000000005",
+      "name": "Call CRM Webhook",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, -120]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.replyText }}",
+        "additionalFields": {}
+      },
+      "id": "a1b2c3d4-0006-4000-8000-000000000006",
+      "name": "Send Bot Reply",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [140, 140]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "prospecting-results",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0007-4000-8000-000000000007",
+      "name": "CRM Results Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-600, 360],
+      "webhookId": "f3a9c1e2-7b41-4c8d-9e55-1a2b3c4d5e02"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ── Format CRM results for Telegram ──────────────────────────\n// Expects the CRM to POST back:\n// { \"chat_id\": \"...\", \"count\": 12, \"prospects\": [{ \"name\": \"\", \"company\": \"\", \"title\": \"\" }] }\n\nconst body = $input.first().json.body ?? $input.first().json;\nconst chatId = String(body.chat_id ?? '');\nconst prospects = Array.isArray(body.prospects) ? body.prospects : [];\nconst count = body.count ?? prospects.length;\n\nlet text;\nif (count === 0) {\n  text = `⚠️ Prospecting finished but returned 0 prospects.\\nTry broadening your criteria — send /start to run it again.`;\n} else {\n  text = `✅ Prospecting complete! Found ${count} prospects and added them to your CRM contacts:\\n\\n`;\n  for (const p of prospects.slice(0, 20)) {\n    const parts = [p.name ?? 'Unknown', p.title, p.company ? `@ ${p.company}` : null].filter(Boolean);\n    text += `• ${parts.join(' — ')}\\n`;\n  }\n  if (prospects.length > 20) {\n    text += `\\n…and ${prospects.length - 20} more (see your CRM contacts).`;\n  }\n  text += `\\n\\nSend /start to run another search. 🚀`;\n}\n\nreturn [{ json: { chatId, text } }];"
+      },
+      "id": "a1b2c3d4-0008-4000-8000-000000000008",
+      "name": "Format Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-360, 360]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {}
+      },
+      "id": "a1b2c3d4-0009-4000-8000-000000000009",
+      "name": "Send Results to Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [-120, 360]
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Conversation Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conversation Logic": {
+      "main": [
+        [
+          {
+            "node": "Ready to Fire?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ready to Fire?": {
+      "main": [
+        [
+          {
+            "node": "Send Launch Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Bot Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Launch Message": {
+      "main": [
+        [
+          {
+            "node": "Call CRM Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CRM Results Webhook": {
+      "main": [
+        [
+          {
+            "node": "Format Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Results": {
+      "main": [
+        [
+          {
+            "node": "Send Results to Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}
