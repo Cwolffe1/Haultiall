@@ -44,15 +44,28 @@ You (phone) ──▶ Telegram Bot ──▶ n8n Telegram Trigger
    *Send Launch Message*, *Send Results to Telegram*) and select that same
    credential.
 
-## Part 4 — Point the HTTP node at your CRM (2 min)
+## Part 4 — GoHighLevel: receive the n8n payload (10 min)
 
-1. In your CRM, create a **Workflow** with a **Webhook Trigger** (Inbound
-   Webhook) as the first step and copy its URL.
-2. In n8n, open **Call CRM Webhook** and replace
+> **Prerequisite:** Inbound Webhook is a *Premium Trigger*. Enable premium
+> workflow actions first: **Agency view → Settings → Company → enable
+> "Premium Triggers & Actions" (LC Premium)**. They're billed per execution
+> (fractions of a cent).
+
+1. In your **sub-account (location)**: **Automation → Workflows → + Create
+   Workflow → Start from Scratch**.
+2. **Add New Trigger → search "Inbound Webhook"** and select it. GHL generates
+   a unique URL — copy it.
+3. In n8n, open **Call CRM Webhook** and replace
    `https://YOUR-CRM-WEBHOOK-URL-HERE` with that URL.
+4. **Map the fields:** with the GHL trigger panel open, run one pass through
+   Telegram (answer the 6 questions, reply YES) so n8n POSTs a real sample.
+   In GHL click **"Check for new requests"** — the payload appears and every
+   field becomes a mappable reference. Save the trigger.
+5. Downstream in the GHL workflow, reference the data as
+   `{{inboundWebhookRequest.targeting}}`, `{{inboundWebhookRequest.volume}}`,
+   `{{inboundWebhookRequest.chat_id}}`, etc.
 
-The JSON body n8n sends looks like this — map these fields in your CRM
-workflow (most builders let you map inbound webhook fields to custom values):
+The JSON body n8n sends:
 
 ```json
 {
@@ -67,31 +80,59 @@ workflow (most builders let you map inbound webhook fields to custom values):
 }
 ```
 
-> **Important:** keep `chat_id` flowing through your CRM workflow — it must be
+> **Important:** keep `chat_id` flowing through the GHL workflow — it must be
 > echoed back in the results callback (Part 5) so n8n knows which Telegram
 > chat to reply to.
 
-## Part 5 — Wire the results callback (5 min)
+### ⚠️ Reality check: launching GHL's Prospecting tool
+
+GHL's AI Prospecting tool lives at the **agency level** and has **no workflow
+action or public API to launch a search programmatically**. So the Inbound
+Webhook workflow can't literally "run" the Prospecting tool. Pick one of
+these patterns for the middle step:
+
+- **A. Human-in-the-loop (simplest):** the GHL workflow sends an *Internal
+  Notification* (or SMS/email to you) containing the criteria. You run the
+  Prospecting search manually; new prospects land as contacts and Part 5's
+  callback workflow reports back to Telegram automatically.
+- **B. Fully automated (recommended):** let **n8n do the lead sourcing**
+  instead — add an Apollo / Google Maps / LinkedIn data node between
+  *Ready to Fire?* and the GHL call, then create each lead in GHL using
+  n8n's built-in **HighLevel node** (Contact → Create, tag `new prospect`).
+  GHL workflows take over from the tag for outreach. This is the only path
+  with zero manual steps.
+- **C. AI Employee / Workflow AI:** if your plan includes GHL's AI actions,
+  use the inbound criteria to drive whatever AI prospecting automation you've
+  built in the location.
+
+## Part 5 — GHL → n8n results callback (5 min)
 
 1. **Activate** the n8n workflow (toggle top-right). This is required — the
    conversation state only persists when the workflow is active.
 2. Click the **CRM Results Webhook** node and copy its **Production URL**
    (ends in `/webhook/prospecting-results`).
-3. At the END of your CRM prospecting workflow, add a **Custom Webhook /
-   External Call** action that POSTs to that URL with this shape:
+3. Create a **second GHL workflow** in the location:
+   - **Trigger:** *Contact Tag Added* → tag `new prospect` (or the
+     *Prospecting* trigger if your plan has it).
+   - **Action:** **Custom Webhook** (Premium Action) → Method `POST` →
+     URL = your n8n production URL. Under **Custom Data**, add:
 
-```json
-{
-  "chat_id": "{{inboundWebhook.chat_id}}",
-  "count": 12,
-  "prospects": [
-    { "name": "Jane Doe", "title": "Owner", "company": "Doe Roofing" }
-  ]
-}
-```
+   | Key | Value |
+   |---|---|
+   | `chat_id` | your Telegram chat ID (see note below) |
+   | `count` | `1` |
+   | `prospects` | leave out — or send name/company via `name`: `{{contact.name}}` |
 
-If your CRM can't easily build the prospect array, just send `chat_id` and
-`count` — the Telegram summary still works.
+   This fires once per new prospect, so you get a Telegram ping per contact.
+   If you'd rather get one batch summary, put the Custom Webhook at the end
+   of the Part 4 workflow instead, after a *Wait* step, sending
+   `chat_id = {{inboundWebhookRequest.chat_id}}` and a `count` custom value.
+
+> **chat_id note:** the tag-triggered workflow has no memory of your Telegram
+> chat, so hard-code your own chat ID there (text your bot, look at any n8n
+> execution — `message.chat.id` — and paste that number). If you're the only
+> user, this is fine. The Part 4 workflow *does* know it via
+> `{{inboundWebhookRequest.chat_id}}`.
 
 ## Part 6 — Test it 🚀
 
@@ -126,6 +167,12 @@ If your CRM can't easily build the prospect array, just send `chat_id` and
 - **CRM call fails** → open the failed execution, check the *Call CRM Webhook*
   node's error. Verify the URL and whether your CRM expects extra headers/auth
   (add them under the node's *Headers* options).
+- **Can't find "Inbound Webhook" / "Custom Webhook" in GHL** → Premium
+  Triggers & Actions isn't enabled. Agency view → Settings → Company →
+  enable LC Premium Triggers & Actions (rebilling toggle).
+- **GHL "Check for new requests" shows nothing** → the sample POST must hit
+  the trigger URL *after* the panel is open; re-run the Telegram flow and
+  click it again.
 - **No results message** → confirm the CRM callback POSTs to the **production**
   webhook URL and includes `chat_id` as a string.
 
