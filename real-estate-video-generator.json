@@ -1,0 +1,330 @@
+{
+  "name": "Real Estate Video Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-real-estate-video",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1a2b3c4d-1111-1111-1111-111111111111",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "webhookId": "real-estate-video"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.body.listing_url }}",
+        "options": {
+          "allowUnauthorizedCerts": true
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            },
+            {
+              "name": "Accept",
+              "value": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+            }
+          ]
+        }
+      },
+      "id": "2a2b3c4d-2222-2222-2222-222222222222",
+      "name": "Scrape Listing Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const html = $input.first().json.data;\n\n// Extract image URLs\nconst imgRegex = /https?:\\/\\/[^\\s\"'<>]+\\.(?:jpg|jpeg|png|webp)(?:\\?[^\\s\"'<>]*)?/gi;\nconst allImgs = [...new Set(html.match(imgRegex) || [])];\nconst propertyImgs = allImgs.filter(u => {\n  const l = u.toLowerCase();\n  return !l.includes('logo') && !l.includes('icon') &&\n         !l.includes('avatar') && !l.includes('favicon') &&\n         !l.includes('sprite') && !l.includes('placeholder') &&\n         !l.includes('16x16') && !l.includes('32x32');\n}).slice(0, 25);\n\n// Extract property details\nconst price = html.match(/\\$[\\d,]+(?:\\.?\\d+)?(?:K|M)?/)?.[0] || 'Call for Price';\nconst beds  = html.match(/(\\d+)\\s*(?:bed|bd|BR)/i)?.[1] || '';\nconst baths = html.match(/(\\d+(?:\\.\\d+)?)\\s*(?:bath|ba|BA)/i)?.[1] || '';\nconst sqft  = html.match(/([\\d,]+)\\s*(?:sq\\.?\\s?ft|sqft|square\\s+feet)/i)?.[1] || '';\n\nlet address = '';\nconst addrPats = [\n  /address[^>]*>([^<]{10,60})</i,\n  /itemProp=[\"']streetAddress[\"'][^>]*>([^<]+)</i,\n  /\"streetAddress\"\\s*:\\s*\"([^\"]+)\"/\n];\nfor (const p of addrPats) {\n  const m = html.match(p);\n  if (m) { address = m[1].trim(); break; }\n}\n\nreturn [{\n  json: {\n    images: propertyImgs,\n    details: { price, beds, baths, sqft, address,\n      listing_url: $('Webhook').first().json.body.listing_url\n    }\n  }\n}];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "3a2b3c4d-3333-3333-3333-333333333333",
+      "name": "Extract Listing Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { images, details } = $input.first().json;\n\nconst imageList = images.slice(0, 20).join('\\n');\n\nconst prompt = `You are a professional real estate video producer. Organize these listing photos into a cinematic 30-45 second vertical social media video.\n\nPhotos (one URL per line):\n${imageList}\n\nProperty: ${details.price}${details.beds ? ', ' + details.beds + ' bed' : ''}${details.baths ? ', ' + details.baths + ' bath' : ''}${details.sqft ? ', ' + details.sqft + ' sqft' : ''}${details.address ? ' — ' + details.address : ''}\n\nReturn ONLY valid JSON — no commentary, no markdown fences — with this exact structure:\n{\n  \"sequence\": [\n    { \"url\": \"<photo_url>\", \"room\": \"exterior|living|kitchen|dining|bedroom|bathroom|backyard|other\", \"caption\": \"<short overlay text>\", \"duration\": <seconds as number> }\n  ],\n  \"intro_text\": \"<property headline, max 40 chars>\",\n  \"outro_text\": \"<call to action, max 40 chars>\",\n  \"music_style\": \"upbeat|elegant|modern\"\n}\n\nRules:\n- Pick the 10-12 best photos only\n- Order: exterior → living/dining → kitchen → bedrooms → bathrooms → backyard\n- Each duration 2-3 seconds\n- Captions must be short (3-5 words)\n- Only output raw JSON`;\n\nreturn [{\n  json: {\n    claudePayload: {\n      model: 'claude-sonnet-4-6',\n      max_tokens: 2048,\n      messages: [{ role: 'user', content: prompt }]\n    }\n  }\n}];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "4a2b3c4d-4444-4444-4444-444444444444",
+      "name": "Build Claude Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawBody": "={{ JSON.stringify($json.claudePayload) }}",
+        "options": {}
+      },
+      "id": "5a2b3c4d-5555-5555-5555-555555555555",
+      "name": "Claude: Organize Photos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "anthropic-api-key",
+          "name": "Anthropic API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const claudeResp = $input.first().json;\nconst details = $('Extract Listing Data').first().json.details;\nconst rawImages = $('Extract Listing Data').first().json.images;\n\nlet videoData;\ntry {\n  const text = claudeResp.content[0].text;\n  const jsonMatch = text.match(/\\{[\\s\\S]+\\}/);\n  videoData = JSON.parse(jsonMatch ? jsonMatch[0] : text);\n} catch (e) {\n  videoData = {\n    sequence: rawImages.slice(0, 12).map(url => ({ url, room: 'property', caption: '', duration: 2.5 })),\n    intro_text: details.address || 'Dream Home For Sale',\n    outro_text: 'Contact Us Today!',\n    music_style: 'upbeat'\n  };\n}\n\nconst photoTrack = { clips: [] };\nconst overlayTrack = { clips: [] };\nlet t = 0;\n\n// Intro title card\nphotoTrack.clips.push({\n  asset: {\n    type: 'html',\n    html: `<div style=\"display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;width:100%;background:linear-gradient(160deg,rgba(0,0,0,0.72),rgba(0,0,0,0.45))\"><p style=\"font-family:Arial,sans-serif;font-size:48px;color:#fff;font-weight:800;text-align:center;margin:0;text-shadow:0 2px 12px rgba(0,0,0,0.9);padding:20px 40px;line-height:1.2\">${videoData.intro_text || details.address || 'Beautiful Property'}</p></div>`,\n    width: 1080,\n    height: 1920,\n    background: 'transparent'\n  },\n  start: 0,\n  length: 3,\n  position: 'center',\n  transition: { in: 'fade', out: 'fade' }\n});\nt = 3;\n\n// Photo clips\nconst seq = (videoData.sequence || []).slice(0, 12);\nfor (const photo of seq) {\n  const dur = typeof photo.duration === 'number' ? photo.duration : 2.5;\n  photoTrack.clips.push({\n    asset: { type: 'image', src: photo.url },\n    start: t,\n    length: dur,\n    effect: 'zoomIn',\n    transition: { in: 'fade', out: 'fade' }\n  });\n  if (photo.caption) {\n    overlayTrack.clips.push({\n      asset: {\n        type: 'html',\n        html: `<div style=\"position:absolute;bottom:180px;left:0;right:0;text-align:center\"><span style=\"background:rgba(0,0,0,0.68);color:#fff;font-family:Arial,sans-serif;font-size:30px;font-weight:600;padding:10px 24px;border-radius:8px;text-shadow:0 1px 4px rgba(0,0,0,0.6)\">${photo.caption}</span></div>`,\n        width: 1080,\n        height: 1920,\n        background: 'transparent'\n      },\n      start: t + 0.4,\n      length: dur - 0.6,\n      position: 'center',\n      transition: { in: 'slideUp', out: 'fade' }\n    });\n  }\n  t += dur;\n}\n\n// Persistent property details bar\nconst parts = [\n  details.price,\n  details.beds  ? details.beds  + ' BD'   : '',\n  details.baths ? details.baths + ' BA'   : '',\n  details.sqft  ? details.sqft  + ' SQFT' : ''\n].filter(Boolean);\n\nif (parts.length > 0) {\n  overlayTrack.clips.push({\n    asset: {\n      type: 'html',\n      html: `<div style=\"position:absolute;bottom:0;left:0;right:0;background:rgba(10,10,10,0.82);padding:24px 30px;text-align:center\"><p style=\"color:#fff;font-family:Arial,sans-serif;font-size:34px;font-weight:700;margin:0;letter-spacing:1px\">${parts.join('  ·  ')}</p></div>`,\n      width: 1080,\n      height: 1920,\n      background: 'transparent'\n    },\n    start: 3,\n    length: t - 3,\n    position: 'center'\n  });\n}\n\n// Outro\nphotoTrack.clips.push({\n  asset: {\n    type: 'html',\n    html: `<div style=\"display:flex;align-items:center;justify-content:center;height:100%;width:100%;background:linear-gradient(160deg,rgba(0,0,0,0.78),rgba(0,0,0,0.5))\"><p style=\"font-family:Arial,sans-serif;font-size:52px;color:#fff;font-weight:800;text-align:center;margin:0;text-shadow:0 2px 12px rgba(0,0,0,0.9);padding:20px 40px\">${videoData.outro_text || 'Call Us Today!'}</p></div>`,\n    width: 1080,\n    height: 1920,\n    background: 'transparent'\n  },\n  start: t,\n  length: 3,\n  position: 'center',\n  transition: { in: 'fade', out: 'fade' }\n});\nconst totalDuration = t + 3;\n\nconst musicMap = {\n  upbeat:  'https://assets.mixkit.co/music/preview/mixkit-life-is-a-dream-837.mp3',\n  elegant: 'https://assets.mixkit.co/music/preview/mixkit-dream-cinematic-drama-598.mp3',\n  modern:  'https://assets.mixkit.co/music/preview/mixkit-hip-hop-02-621.mp3'\n};\n\nconst shotstackPayload = {\n  timeline: {\n    soundtrack: {\n      src: musicMap[videoData.music_style] || musicMap.upbeat,\n      effect: 'fadeOut',\n      volume: 0.35\n    },\n    tracks: overlayTrack.clips.length > 0\n      ? [overlayTrack, photoTrack]\n      : [photoTrack]\n  },\n  output: {\n    format: 'mp4',\n    resolution: '1080',\n    aspectRatio: '9:16',\n    fps: 30,\n    quality: 'high'\n  }\n};\n\nreturn [{ json: { shotstackPayload, totalDuration, details } }];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "6a2b3c4d-6666-6666-6666-666666666666",
+      "name": "Build Video Template",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.shotstack.io/v1/render",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawBody": "={{ JSON.stringify($json.shotstackPayload) }}",
+        "options": {}
+      },
+      "id": "7a2b3c4d-7777-7777-7777-777777777777",
+      "name": "Submit Render Job",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1540, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "shotstack-api-key",
+          "name": "Shotstack API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resume": "timeInterval",
+        "amount": 90,
+        "unit": "seconds"
+      },
+      "id": "8a2b3c4d-8888-8888-8888-888888888888",
+      "name": "Wait 90s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [1760, 300],
+      "webhookId": "render-wait-1"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.shotstack.io/v1/render/{{ $('Submit Render Job').first().json.response.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "9a2b3c4d-9999-9999-9999-999999999999",
+      "name": "Check Render Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1980, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "shotstack-api-key",
+          "name": "Shotstack API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.response.status }}",
+              "operation": "equals",
+              "value2": "done"
+            }
+          ]
+        }
+      },
+      "id": "aa2b3c4d-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      "name": "Render Done?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [2200, 300]
+    },
+    {
+      "parameters": {
+        "resume": "timeInterval",
+        "amount": 30,
+        "unit": "seconds"
+      },
+      "id": "ba2b3c4d-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+      "name": "Wait 30s More",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [2200, 520],
+      "webhookId": "render-wait-2"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.shotstack.io/v1/render/{{ $('Submit Render Job').first().json.response.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "ca2b3c4d-cccc-cccc-cccc-cccccccccccc",
+      "name": "Re-check Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2420, 520],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "shotstack-api-key",
+          "name": "Shotstack API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge results from either the first or second status check\nconst statusData = $input.first().json;\nconst details = $('Build Video Template').first().json.details;\nconst renderId = $('Submit Render Job').first().json.response.id;\n\nreturn [{\n  json: {\n    success: statusData.response?.status === 'done',\n    video_url: statusData.response?.url || null,\n    render_id: renderId,\n    status: statusData.response?.status || 'unknown',\n    details\n  }\n}];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "da2b3c4d-dddd-dddd-dddd-dddddddddddd",
+      "name": "Prepare Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2640, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "ea2b3c4d-eeee-eeee-eeee-eeeeeeeeeeee",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2860, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [{ "node": "Scrape Listing Page", "type": "main", "index": 0 }]
+      ]
+    },
+    "Scrape Listing Page": {
+      "main": [
+        [{ "node": "Extract Listing Data", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extract Listing Data": {
+      "main": [
+        [{ "node": "Build Claude Prompt", "type": "main", "index": 0 }]
+      ]
+    },
+    "Build Claude Prompt": {
+      "main": [
+        [{ "node": "Claude: Organize Photos", "type": "main", "index": 0 }]
+      ]
+    },
+    "Claude: Organize Photos": {
+      "main": [
+        [{ "node": "Build Video Template", "type": "main", "index": 0 }]
+      ]
+    },
+    "Build Video Template": {
+      "main": [
+        [{ "node": "Submit Render Job", "type": "main", "index": 0 }]
+      ]
+    },
+    "Submit Render Job": {
+      "main": [
+        [{ "node": "Wait 90s", "type": "main", "index": 0 }]
+      ]
+    },
+    "Wait 90s": {
+      "main": [
+        [{ "node": "Check Render Status", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check Render Status": {
+      "main": [
+        [{ "node": "Render Done?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Render Done?": {
+      "main": [
+        [{ "node": "Prepare Response", "type": "main", "index": 0 }],
+        [{ "node": "Wait 30s More", "type": "main", "index": 0 }]
+      ]
+    },
+    "Wait 30s More": {
+      "main": [
+        [{ "node": "Re-check Status", "type": "main", "index": 0 }]
+      ]
+    },
+    "Re-check Status": {
+      "main": [
+        [{ "node": "Prepare Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Prepare Response": {
+      "main": [
+        [{ "node": "Respond to Webhook", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "real-estate-video-generator"
+  }
+}
