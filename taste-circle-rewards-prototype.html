@@ -1,0 +1,1433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>TasteCircle — Rewards Prototype</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #F4F5F7;
+    --card: #FFFFFF;
+    --ink: #14182B;
+    --ink2: #2C3242;
+    --soft: #8A909C;
+    --line: #ECECEF;
+    --coral: #FF5C4D;
+    --coral-soft: #FFE9E6;
+    --xp: #F5820F;
+    --xp-soft: #FBE7D2;
+    --bronze: #C77B2A;
+    --bronze-bg: #F7E6D2;
+    --rare: #4C7DF0;
+    --epic: #9B5DE5;
+    --legendary: #F5A623;
+    --local: #16B27A;
+    --common: #9AA3B2;
+    --r: 18px;
+  }
+
+  body {
+    background: #E8E9EB;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 24px 12px;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  }
+
+  .device {
+    width: 390px;
+    min-height: 844px;
+    background: var(--bg);
+    border-radius: 44px;
+    overflow: hidden;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.22), 0 0 0 1px rgba(0,0,0,0.08);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Status bar */
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 28px 4px;
+    background: var(--bg);
+  }
+  .status-time { font-size: 15px; font-weight: 700; color: var(--ink); letter-spacing: -0.3px; }
+  .status-icons { display: flex; gap: 6px; align-items: center; }
+  .status-icons svg { width: 16px; height: 16px; }
+
+  /* Screen container */
+  .screen { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+  .screen.active { display: flex; }
+
+  /* Nav header */
+  .nav-header {
+    padding: 8px 20px 12px;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .nav-title {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 26px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.3px;
+  }
+  .nav-title.center { flex: 1; text-align: center; font-size: 18px; }
+  .nav-icon { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .nav-icon svg { width: 22px; height: 22px; color: var(--ink); }
+  .streak-pill {
+    background: var(--xp-soft);
+    border-radius: 20px;
+    padding: 6px 12px;
+    display: flex; align-items: center; gap: 5px;
+    font-size: 14px; font-weight: 700; color: var(--xp);
+  }
+
+  /* Scroll area */
+  .scroll-area {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 24px;
+  }
+  .scroll-area::-webkit-scrollbar { display: none; }
+
+  /* Tab bar */
+  .tab-bar {
+    background: var(--card);
+    border-top: 1px solid var(--line);
+    display: flex;
+    padding: 10px 0 28px;
+    flex-shrink: 0;
+  }
+  .tab-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    cursor: pointer;
+    padding: 4px 0;
+    transition: all 0.15s;
+  }
+  .tab-item svg { width: 24px; height: 24px; }
+  .tab-label { font-size: 10px; font-weight: 600; color: var(--soft); letter-spacing: 0.1px; }
+  .tab-item.active .tab-label { color: var(--coral); }
+  .tab-item.active svg { color: var(--coral); }
+  .tab-item:not(.active) svg { color: var(--soft); }
+  .tab-item.home-active .tab-label { color: var(--ink); }
+  .tab-item.home-active svg { color: var(--ink); }
+
+  /* Cards */
+  .card {
+    background: var(--card);
+    border-radius: var(--r);
+    padding: 16px;
+    margin: 0 16px 12px;
+    box-shadow: 0 1px 4px rgba(20,24,43,0.06);
+  }
+  .card-sm { padding: 12px 14px; border-radius: 14px; }
+
+  /* Segmented control */
+  .seg-wrap { padding: 0 16px 12px; position: sticky; top: 0; z-index: 10; background: var(--bg); }
+  .seg-inner { padding: 6px 0 2px; }
+  .seg-ctrl {
+    background: #E4E5E9;
+    border-radius: 30px;
+    padding: 3px;
+    display: flex;
+  }
+  .seg-btn {
+    flex: 1;
+    border: none;
+    background: transparent;
+    border-radius: 26px;
+    padding: 8px 4px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--soft);
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .seg-btn.active {
+    background: var(--card);
+    color: var(--ink);
+    box-shadow: 0 1px 6px rgba(20,24,43,0.1);
+  }
+
+  /* Section content */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* Rank summary card (top of Rewards) */
+  .rank-card {
+    margin: 12px 16px 0;
+    background: var(--card);
+    border-radius: var(--r);
+    padding: 16px;
+    box-shadow: 0 1px 4px rgba(20,24,43,0.06);
+  }
+  .rank-card-inner { display: flex; align-items: center; gap: 14px; }
+  .rank-badge-circle {
+    width: 52px; height: 52px;
+    background: var(--bronze-bg);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .rank-badge-circle svg { width: 26px; height: 26px; color: var(--bronze); }
+  .rank-info { flex: 1; }
+  .rank-label {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 20px; font-weight: 600; color: var(--ink);
+    letter-spacing: -0.2px;
+  }
+  .rank-xp { font-size: 12px; color: var(--soft); font-weight: 500; margin: 1px 0 6px; }
+  .xp-bar-track { background: var(--line); border-radius: 4px; height: 7px; overflow: hidden; }
+  .xp-bar-fill { background: var(--xp); border-radius: 4px; height: 100%; transition: width 0.4s; }
+  .rank-pos { font-size: 12px; color: var(--soft); font-weight: 600; margin-top: 4px; }
+  .rank-arrow { color: var(--soft); }
+
+  /* Crumbs balance bar */
+  .crumbs-bar {
+    margin: 10px 16px 0;
+    background: var(--coral-soft);
+    border-radius: var(--r);
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .crumbs-left { display: flex; align-items: center; gap: 10px; }
+  .crumbs-icon { font-size: 28px; line-height: 1; }
+  .crumbs-num {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 32px; font-weight: 700; color: var(--coral);
+    letter-spacing: -0.5px; line-height: 1;
+  }
+  .crumbs-label { font-size: 11px; color: var(--coral); font-weight: 600; opacity: 0.8; }
+  .crumbs-tagline { font-size: 11px; color: var(--coral); font-weight: 600; opacity: 0.7; text-align: right; max-width: 110px; line-height: 1.3; }
+
+  /* Section headers */
+  .sec-header { padding: 6px 16px 4px; }
+  .sec-title { font-size: 18px; font-weight: 800; color: var(--ink); letter-spacing: -0.3px; }
+  .sec-sub { font-size: 13px; color: var(--soft); font-weight: 500; margin-top: 2px; }
+
+  /* Daily action buttons */
+  .daily-row { display: flex; gap: 10px; padding: 0 16px; margin-bottom: 4px; }
+  .daily-btn {
+    flex: 1;
+    background: var(--card);
+    border-radius: 16px;
+    padding: 14px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    box-shadow: 0 1px 4px rgba(20,24,43,0.06);
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+  .daily-btn:active { transform: scale(0.97); }
+  .daily-btn-icon { font-size: 22px; }
+  .daily-btn-title { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .daily-btn-sub { font-size: 11px; color: var(--soft); font-weight: 500; }
+  .daily-btn-action {
+    margin-top: 2px;
+    background: var(--xp);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 7px 10px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 12px; font-weight: 700;
+    cursor: pointer;
+    width: 100%;
+    text-align: center;
+  }
+  .daily-btn-action.coral { background: var(--coral); }
+  .daily-btn-action.claimed { background: var(--line); color: var(--soft); }
+
+  /* Challenge card */
+  .challenge-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px;
+    background: var(--card);
+    margin: 0 16px 8px;
+    border-radius: 14px;
+    box-shadow: 0 1px 4px rgba(20,24,43,0.06);
+    cursor: pointer;
+  }
+  .chall-icon { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+  .chall-icon.orange { background: var(--xp-soft); }
+  .chall-icon.coral { background: var(--coral-soft); }
+  .chall-icon.green { background: #E0F7EE; }
+  .chall-body { flex: 1; }
+  .chall-title { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .chall-meta { font-size: 11px; color: var(--soft); font-weight: 500; margin-top: 2px; }
+  .chall-progress-track { background: var(--line); border-radius: 3px; height: 5px; margin-top: 6px; overflow: hidden; }
+  .chall-progress-fill { height: 100%; border-radius: 3px; background: var(--xp); }
+  .chall-progress-fill.done { background: var(--local); }
+  .chall-reward {
+    display: flex; align-items: center; gap: 3px;
+    background: var(--xp-soft); border-radius: 20px;
+    padding: 5px 9px;
+    font-size: 12px; font-weight: 700; color: var(--xp);
+    flex-shrink: 0;
+  }
+  .chall-reward.done { background: var(--local); background: #E0F7EE; color: var(--local); }
+
+  /* Tasting Menu / Pass */
+  .pass-card {
+    margin: 0 16px 12px;
+    background: linear-gradient(135deg, #1A1F35 0%, #2C3242 100%);
+    border-radius: var(--r);
+    padding: 18px 16px;
+    overflow: hidden;
+    position: relative;
+  }
+  .pass-badge {
+    position: absolute; top: -10px; right: -10px;
+    background: var(--xp);
+    color: white; font-size: 10px; font-weight: 700;
+    padding: 4px 10px; border-radius: 20px;
+    transform: rotate(15deg);
+  }
+  .pass-label { font-size: 11px; color: rgba(255,255,255,0.5); font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; }
+  .pass-title { font-family: 'Fredoka', sans-serif; font-size: 20px; font-weight: 600; color: white; margin: 3px 0 10px; }
+  .pass-xp-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .pass-xp-text { font-size: 12px; color: rgba(255,255,255,0.6); font-weight: 500; }
+  .pass-track { display: flex; gap: 5px; overflow-x: auto; padding-bottom: 4px; }
+  .pass-track::-webkit-scrollbar { display: none; }
+  .pass-course {
+    flex-shrink: 0;
+    width: 46px; height: 52px;
+    border-radius: 12px;
+    border: 1.5px solid rgba(255,255,255,0.1);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 3px;
+    font-size: 10px; color: rgba(255,255,255,0.4); font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .pass-course.claimed { border-color: var(--local); background: rgba(22,178,122,0.15); color: var(--local); }
+  .pass-course.current { border-color: var(--xp); background: rgba(245,130,15,0.2); color: var(--xp); box-shadow: 0 0 0 2px rgba(245,130,15,0.3); }
+  .pass-course.locked { opacity: 0.4; }
+  .pass-course-num { font-family: 'Fredoka', sans-serif; font-size: 15px; font-weight: 600; }
+  .free-tag { display: inline-block; background: rgba(22,178,122,0.2); color: var(--local); font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 20px; margin-bottom: 10px; border: 1px solid rgba(22,178,122,0.3); }
+
+  /* Tables */
+  .table-intro {
+    margin: 0 16px 12px;
+    background: var(--card);
+    border-radius: var(--r);
+    padding: 18px;
+    text-align: center;
+    box-shadow: 0 1px 4px rgba(20,24,43,0.06);
+  }
+  .table-intro-icon { font-size: 36px; margin-bottom: 8px; }
+  .table-intro-title { font-size: 16px; font-weight: 800; color: var(--ink); }
+  .table-intro-sub { font-size: 13px; color: var(--soft); font-weight: 500; margin-top: 4px; line-height: 1.4; }
+  .btn-coral {
+    display: block;
+    background: var(--coral);
+    color: white;
+    border: none;
+    border-radius: 28px;
+    padding: 13px 20px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 15px; font-weight: 700;
+    cursor: pointer;
+    text-align: center;
+    margin: 12px 16px 8px;
+    box-shadow: 0 4px 14px rgba(255,92,77,0.3);
+    transition: transform 0.1s;
+    width: calc(100% - 32px);
+  }
+  .btn-coral:active { transform: scale(0.98); }
+  .table-card {
+    margin: 0 16px 10px;
+    background: var(--card);
+    border-radius: var(--r);
+    padding: 16px;
+    box-shadow: 0 1px 4px rgba(20,24,43,0.06);
+    cursor: pointer;
+  }
+  .table-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .table-name { font-size: 16px; font-weight: 800; color: var(--ink); }
+  .admin-pill { background: var(--coral-soft); color: var(--coral); font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 20px; }
+  .member-avatars { display: flex; }
+  .member-av {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--line); border: 2px solid white;
+    margin-left: -6px; display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: var(--soft);
+    overflow: hidden;
+  }
+  .member-av:first-child { margin-left: 0; }
+  .member-av img { width: 100%; height: 100%; object-fit: cover; }
+  .table-challenge-strip {
+    background: var(--bg);
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin-top: 10px;
+  }
+  .tcs-label { font-size: 10px; font-weight: 700; color: var(--soft); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px; }
+  .tcs-title { font-size: 13px; font-weight: 700; color: var(--ink); }
+  .tcs-meta { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; }
+  .tcs-deadline { font-size: 11px; color: var(--soft); font-weight: 500; }
+  .tcs-reward { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: var(--xp); }
+
+  /* Shop */
+  .featured-hero {
+    margin: 0 16px 12px;
+    border-radius: var(--r);
+    overflow: hidden;
+    height: 140px;
+    position: relative;
+    cursor: pointer;
+  }
+  .hero-gradient {
+    width: 100%; height: 100%;
+    background: linear-gradient(135deg, #FF5C4D 0%, #C026A0 100%);
+    display: flex; flex-direction: column; justify-content: flex-end;
+    padding: 16px;
+  }
+  .hero-tag { background: rgba(255,255,255,0.2); color: white; font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 20px; display: inline-block; margin-bottom: 5px; letter-spacing: 0.5px; }
+  .hero-name { font-family: 'Fredoka', sans-serif; font-size: 22px; font-weight: 600; color: white; }
+  .hero-sub { font-size: 12px; color: rgba(255,255,255,0.8); font-weight: 500; margin-top: 2px; }
+  .rarity-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 16px; margin-bottom: 4px; }
+  .shop-item {
+    background: var(--card);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(20,24,43,0.06);
+    cursor: pointer;
+  }
+  .shop-item-img {
+    height: 90px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 36px;
+  }
+  .shop-item-body { padding: 10px; }
+  .shop-rarity-row { display: flex; align-items: center; gap: 5px; margin-bottom: 4px; }
+  .rarity-pill {
+    font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px;
+    display: flex; align-items: center; gap: 3px;
+  }
+  .rarity-pill.rare { background: rgba(76,125,240,0.12); color: var(--rare); }
+  .rarity-pill.epic { background: rgba(155,93,229,0.12); color: var(--epic); }
+  .rarity-pill.legendary { background: rgba(245,166,35,0.12); color: var(--legendary); }
+  .rarity-pill.common { background: rgba(154,163,178,0.12); color: var(--common); }
+  .rarity-pill.signature { background: linear-gradient(135deg, rgba(255,92,77,0.12), rgba(192,38,160,0.12)); color: var(--coral); }
+  .shop-type { font-size: 10px; color: var(--soft); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .shop-name { font-size: 13px; font-weight: 700; color: var(--ink); margin-top: 2px; }
+  .shop-price {
+    display: flex; align-items: center; gap: 4px;
+    margin-top: 6px;
+    font-size: 13px; font-weight: 700; color: var(--ink);
+  }
+  .shop-price.owned { color: var(--soft); font-weight: 600; font-size: 12px; }
+  .redeem-strip {
+    margin: 4px 16px 12px;
+    background: var(--card);
+    border-radius: var(--r);
+    padding: 16px;
+    box-shadow: 0 1px 4px rgba(20,24,43,0.06);
+  }
+  .redeem-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .redeem-title { font-size: 16px; font-weight: 800; color: var(--ink); }
+  .redeem-see-all { font-size: 13px; font-weight: 600; color: var(--coral); cursor: pointer; }
+  .redeem-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .redeem-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .redeem-ico { width: 44px; height: 44px; border-radius: 12px; background: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+  .redeem-body { flex: 1; }
+  .redeem-name { font-size: 13px; font-weight: 700; color: var(--ink); }
+  .redeem-sponsor { font-size: 11px; color: var(--soft); font-weight: 500; margin-top: 1px; }
+  .redeem-btn {
+    background: var(--ink);
+    color: white; border: none;
+    border-radius: 20px; padding: 7px 13px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; gap: 4px;
+    cursor: pointer; flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  /* Locker */
+  .locker-preview {
+    margin: 0 16px 12px;
+    background: var(--card);
+    border-radius: var(--r);
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(20,24,43,0.06);
+  }
+  .locker-banner {
+    height: 70px;
+    background: linear-gradient(135deg, #FF5C4D 0%, #C026A0 100%);
+    position: relative;
+  }
+  .locker-banner.none { background: linear-gradient(135deg, #E4E5E9 0%, #D0D2D8 100%); }
+  .locker-avatar-wrap {
+    position: absolute; bottom: -22px; left: 16px;
+    width: 52px; height: 52px;
+  }
+  .locker-avatar {
+    width: 52px; height: 52px; border-radius: 50%;
+    background: var(--bg);
+    border: 3px solid white;
+    overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+  .locker-avatar-frame {
+    position: absolute; inset: -3px;
+    border-radius: 50%;
+    border: 3px solid var(--rare);
+    pointer-events: none;
+  }
+  .locker-profile-info { padding: 28px 16px 14px; }
+  .locker-username { font-size: 17px; font-weight: 800; color: var(--ink); }
+  .locker-nameplate { background: linear-gradient(90deg, var(--epic), var(--rare)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .locker-title-chip {
+    display: inline-block; background: var(--epic); color: white;
+    font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; margin-top: 4px;
+  }
+  .type-tabs { display: flex; gap: 6px; overflow-x: auto; padding: 0 16px 12px; }
+  .type-tabs::-webkit-scrollbar { display: none; }
+  .type-tab {
+    flex-shrink: 0; background: var(--card); border: 1.5px solid var(--line);
+    border-radius: 20px; padding: 6px 14px;
+    font-size: 12px; font-weight: 700; color: var(--soft);
+    cursor: pointer; transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .type-tab.active { border-color: var(--ink); color: var(--ink); background: var(--ink); color: white; }
+  .locker-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 0 16px; }
+  .locker-item {
+    background: var(--card);
+    border-radius: 14px;
+    overflow: hidden;
+    border: 2px solid transparent;
+    box-shadow: 0 1px 4px rgba(20,24,43,0.06);
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+  .locker-item.equipped { border-color: var(--ink); }
+  .locker-item-img { height: 72px; display: flex; align-items: center; justify-content: center; font-size: 28px; }
+  .locker-item-name { font-size: 10px; font-weight: 700; color: var(--ink); text-align: center; padding: 4px 4px 8px; line-height: 1.3; }
+  .equipped-check {
+    position: absolute; top: 4px; right: 4px;
+    background: var(--ink); color: white;
+    width: 18px; height: 18px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+  }
+
+  /* Ranks */
+  .ranks-top {
+    margin: 0 16px 12px;
+    background: var(--card);
+    border-radius: var(--r);
+    padding: 20px 16px;
+    text-align: center;
+    box-shadow: 0 1px 4px rgba(20,24,43,0.06);
+  }
+  .ranks-badge { width: 72px; height: 72px; background: var(--bronze-bg); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; }
+  .ranks-badge svg { width: 36px; height: 36px; color: var(--bronze); }
+  .ranks-tier-name { font-family: 'Fredoka', sans-serif; font-size: 28px; font-weight: 600; color: var(--ink); letter-spacing: -0.3px; }
+  .ranks-xp-str { font-size: 13px; color: var(--soft); font-weight: 500; margin: 3px 0 10px; }
+  .xp-bar-lg { background: var(--line); border-radius: 6px; height: 9px; overflow: hidden; margin-bottom: 10px; }
+  .xp-bar-lg-fill { background: var(--xp); height: 100%; border-radius: 6px; width: 75%; }
+  .tier-row { display: flex; justify-content: space-between; gap: 6px; }
+  .tier-circle {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px;
+    padding: 10px 4px; border-radius: 14px; cursor: pointer;
+  }
+  .tier-circle.current { background: var(--bronze-bg); }
+  .tier-icon { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .tier-icon.bronze { background: var(--bronze-bg); }
+  .tier-icon.locked { background: var(--line); }
+  .tier-icon svg { width: 18px; height: 18px; }
+  .tier-name { font-size: 10px; font-weight: 700; color: var(--soft); }
+  .tier-circle.current .tier-name { color: var(--bronze); }
+  .leaderboard-card {
+    margin: 0 16px 10px;
+    background: var(--card);
+    border-radius: var(--r);
+    padding: 16px;
+    box-shadow: 0 1px 4px rgba(20,24,43,0.06);
+  }
+  .lb-section-title { font-size: 15px; font-weight: 800; color: var(--ink); margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+  .lb-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
+  .lb-row + .lb-row { border-top: 1px solid var(--line); }
+  .lb-rank { width: 22px; font-size: 14px; font-weight: 800; color: var(--soft); text-align: center; flex-shrink: 0; }
+  .lb-rank.gold { color: var(--legendary); }
+  .lb-av { width: 36px; height: 36px; border-radius: 50%; background: var(--line); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: var(--soft); }
+  .lb-name { flex: 1; font-size: 14px; font-weight: 700; color: var(--ink); }
+  .lb-xp { font-size: 13px; font-weight: 700; color: var(--soft); }
+
+  /* Taste box modal */
+  .modal-overlay {
+    position: absolute; inset: 0;
+    background: rgba(20,24,43,0.6);
+    display: flex; align-items: flex-end; justify-content: center;
+    z-index: 100;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s;
+    border-radius: 44px;
+    overflow: hidden;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal-sheet {
+    background: var(--card);
+    border-radius: 24px 24px 0 0;
+    width: 100%; padding: 20px;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    max-height: 70%;
+    overflow-y: auto;
+  }
+  .modal-overlay.open .modal-sheet { transform: translateY(0); }
+  .modal-drag { width: 36px; height: 4px; background: var(--line); border-radius: 2px; margin: 0 auto 16px; }
+  .modal-title { font-family: 'Fredoka', sans-serif; font-size: 22px; font-weight: 600; color: var(--ink); text-align: center; }
+  .modal-sub { font-size: 13px; color: var(--soft); text-align: center; margin-top: 4px; line-height: 1.4; }
+  .box-visual { width: 100px; height: 100px; margin: 16px auto; font-size: 72px; text-align: center; line-height: 100px; animation: wobble 2s infinite; }
+  @keyframes wobble { 0%,100%{transform:rotate(-5deg)}50%{transform:rotate(5deg)} }
+  .odds-table { background: var(--bg); border-radius: 12px; padding: 14px; margin: 12px 0; }
+  .odds-title { font-size: 12px; font-weight: 700; color: var(--soft); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px; }
+  .odds-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; }
+  .odds-row + .odds-row { border-top: 1px solid var(--line); }
+  .odds-rarity { font-size: 13px; font-weight: 700; }
+  .odds-pct { font-size: 13px; font-weight: 600; color: var(--soft); }
+  .modal-btn { width: 100%; background: var(--coral); color: white; border: none; border-radius: 28px; padding: 15px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 12px; }
+  .modal-close { position: absolute; top: 16px; right: 20px; background: var(--bg); border: none; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; color: var(--soft); }
+
+  /* Home screen styles */
+  .home-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 20px 12px; }
+  .home-streak { background: var(--xp-soft); border-radius: 20px; padding: 6px 12px; display: flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 700; color: var(--xp); }
+  .seg-ctrl-2btn { background: #E4E5E9; border-radius: 30px; padding: 3px; display: flex; margin: 0 16px 12px; }
+  .post-card { background: var(--card); margin: 0 0 2px; }
+  .post-author { display: flex; align-items: center; gap: 10px; padding: 12px 16px 8px; }
+  .post-av { width: 42px; height: 42px; border-radius: 50%; background: var(--bg); overflow: hidden; flex-shrink: 0; position: relative; }
+  .post-av-frame { position: absolute; inset: -2px; border-radius: 50%; border: 2px solid var(--rare); pointer-events: none; }
+  .post-av img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+  .post-author-name { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .post-time { font-size: 12px; color: var(--soft); font-weight: 500; }
+  .post-title-chip { display: inline-block; background: var(--epic); color: white; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px; margin-top: 1px; }
+  .post-img { width: 100%; aspect-ratio: 1; object-fit: cover; background: var(--line); display: block; font-size: 60px; text-align: center; line-height: 390px; }
+  .post-actions { display: flex; align-items: center; padding: 10px 16px; gap: 16px; }
+  .post-action { display: flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 600; color: var(--soft); cursor: pointer; }
+  .post-action.liked { color: var(--coral); }
+  .post-action svg { width: 22px; height: 22px; }
+  .post-bookmark { margin-left: auto; }
+  .post-caption { padding: 0 16px 14px; font-size: 14px; color: var(--ink); font-weight: 500; line-height: 1.4; }
+  .date-divider { text-align: center; font-size: 12px; font-weight: 700; color: var(--soft); padding: 8px 0; }
+
+  /* Profile */
+  .profile-name { font-size: 16px; font-weight: 800; color: var(--ink); text-align: center; margin-bottom: 2px; }
+  .profile-icons { display: flex; gap: 10px; }
+  .profile-banner-strip { height: 64px; background: linear-gradient(135deg, #FF5C4D, #C026A0); margin: 0 16px; border-radius: 14px; margin-bottom: -20px; }
+  .profile-av-wrap { position: relative; width: 72px; height: 72px; margin-left: 20px; }
+  .profile-av { width: 72px; height: 72px; border-radius: 50%; background: white; border: 3px solid white; overflow: hidden; }
+  .profile-av img { width: 100%; height: 100%; object-fit: cover; }
+  .profile-av-frame { position: absolute; inset: -2px; border-radius: 50%; border: 2px solid var(--rare); }
+  .profile-stats-row { display: flex; gap: 0; padding: 24px 16px 0; }
+  .profile-stat { flex: 1; text-align: center; }
+  .profile-stat-num { font-family: 'Fredoka', sans-serif; font-size: 26px; font-weight: 600; color: var(--ink); }
+  .profile-stat-label { font-size: 12px; color: var(--soft); font-weight: 600; }
+  .profile-bio { padding: 4px 20px 10px; font-size: 14px; color: var(--soft); font-style: italic; }
+  .profile-btn-row { display: flex; gap: 10px; padding: 0 16px 14px; }
+  .profile-btn { flex: 1; border: 1.5px solid var(--line); background: white; border-radius: 28px; padding: 10px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; font-weight: 700; color: var(--ink); cursor: pointer; }
+  .rank-chip-row { padding: 0 16px 4px; }
+  .rank-chip {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--card); border-radius: 28px;
+    padding: 10px 14px;
+    box-shadow: 0 1px 4px rgba(20,24,43,0.06);
+    cursor: pointer;
+  }
+  .rank-chip-badge { width: 28px; height: 28px; background: var(--bronze-bg); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .rank-chip-badge svg { width: 14px; height: 14px; color: var(--bronze); }
+  .rank-chip-text { font-size: 13px; font-weight: 700; color: var(--ink); flex: 1; }
+  .rank-chip-crumbs { display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; color: var(--coral); }
+  .rank-chip-arrow { color: var(--soft); font-size: 12px; }
+  .profile-grid-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px 8px; }
+  .profile-grid-title { font-size: 16px; font-weight: 800; color: var(--ink); }
+  .profile-month-nav { display: flex; align-items: center; gap: 8px; }
+  .profile-month-nav span { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .profile-month-nav button { background: none; border: none; cursor: pointer; color: var(--soft); font-size: 16px; }
+  .posts-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+  .posts-grid-item { aspect-ratio: 1; background: var(--line); position: relative; overflow: hidden; }
+  .posts-grid-item span { position: absolute; bottom: 6px; left: 6px; color: white; font-size: 11px; font-weight: 700; text-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+  .posts-grid-item img { width: 100%; height: 100%; object-fit: cover; }
+
+  /* Utility */
+  .mt4 { margin-top: 4px; }
+  .mt8 { margin-top: 8px; }
+  .mt12 { margin-top: 12px; }
+  .gap4 { gap: 4px; }
+  .flex { display: flex; }
+  .items-center { align-items: center; }
+
+  /* Reward section label at top of Rewards */
+  .rewards-tagline {
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--soft);
+    padding: 8px 20px 2px;
+    letter-spacing: 0.3px;
+  }
+</style>
+</head>
+<body>
+
+<div class="device">
+  <!-- Status bar -->
+  <div class="status-bar">
+    <span class="status-time">6:00</span>
+    <div class="status-icons">
+      <svg viewBox="0 0 24 24" fill="currentColor" style="color:#14182B"><path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0 1 19 12.55M5 12.55a10.94 10.94 0 0 1 5.17-2.39M10.71 5.05A16 16 0 0 1 22.56 9M1.42 9a15.91 15.91 0 0 1 4.7-2.88M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></svg>
+      <svg viewBox="0 0 24 24" fill="currentColor" style="color:#14182B;width:20px;height:12px"><rect x="2" y="7" width="18" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><rect x="4" y="9" width="10" height="7" rx="1"/><path d="M22 11v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </div>
+  </div>
+
+  <!-- ======================== HOME SCREEN ======================== -->
+  <div class="screen active" id="screen-home">
+    <div class="home-header">
+      <div class="home-streak">🔥 <span>0</span></div>
+      <div style="font-family:'Fredoka',sans-serif;font-size:26px;font-weight:600;color:var(--ink)">TasteCircle</div>
+      <div style="display:flex;gap:8px">
+        <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div>
+        <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+      </div>
+    </div>
+
+    <div class="seg-ctrl-2btn" style="margin-top:0">
+      <button class="seg-btn active" style="font-size:14px">Inner Circle</button>
+      <button class="seg-btn" style="font-size:14px">Outer Circle</button>
+    </div>
+
+    <div class="scroll-area">
+      <div class="date-divider">Today</div>
+      <div class="post-card">
+        <div class="post-author">
+          <div class="post-av">
+            <div style="width:100%;height:100%;background:linear-gradient(135deg,#f093fb,#f5576c);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:700">J</div>
+          </div>
+          <div>
+            <div class="post-author-name">jledezma06</div>
+            <div class="post-time">7m ago</div>
+          </div>
+          <div style="margin-left:auto;color:var(--soft)">⋯</div>
+        </div>
+        <div class="post-img" style="background:linear-gradient(135deg,#667eea,#764ba2);height:360px;display:flex;align-items:center;justify-content:center;font-size:80px">🥩</div>
+        <div class="post-actions">
+          <div class="post-action">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            0
+          </div>
+          <div class="post-action">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            0
+          </div>
+          <div class="post-action">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          </div>
+          <div class="post-action">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+          </div>
+          <div class="post-action post-bookmark">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+          </div>
+        </div>
+        <div class="post-caption">steak, zucchinni and rice for dinner 🍽️</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================== REWARDS SCREEN ======================== -->
+  <div class="screen" id="screen-rewards">
+    <div class="nav-header">
+      <div style="font-family:'Fredoka',sans-serif;font-size:26px;font-weight:600;color:var(--ink)">Rewards</div>
+      <div style="display:flex;gap:6px">
+        <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div>
+      </div>
+    </div>
+
+    <!-- Rank summary -->
+    <div class="rank-card" style="margin-top:0">
+      <div class="rank-card-inner" onclick="switchTab('ranks')" style="cursor:pointer">
+        <div class="rank-badge-circle">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="6"/><path d="m9 12 2 2 4-4"/><path d="M6.3 16.8a6 6 0 0 0 11.4 0"/></svg>
+        </div>
+        <div class="rank-info">
+          <div class="rank-label">Bronze · Level 2</div>
+          <div class="rank-xp">830 / 1100 XP</div>
+          <div class="xp-bar-track"><div class="xp-bar-fill" style="width:75%"></div></div>
+          <div class="rank-pos">#13 of 46 friends</div>
+        </div>
+        <div class="rank-arrow">›</div>
+      </div>
+    </div>
+
+    <!-- Crumbs balance -->
+    <div class="crumbs-bar">
+      <div class="crumbs-left">
+        <div class="crumbs-icon">🍪</div>
+        <div>
+          <div class="crumbs-num">340</div>
+          <div class="crumbs-label">Crumbs</div>
+        </div>
+      </div>
+      <div class="crumbs-tagline">Earned by eating out — never bought.</div>
+    </div>
+
+    <!-- Segmented nav -->
+    <div class="seg-wrap" style="padding-top:10px">
+      <div class="seg-inner">
+        <div class="seg-ctrl" id="rewards-seg">
+          <button class="seg-btn active" onclick="switchTab('earn')">Earn</button>
+          <button class="seg-btn" onclick="switchTab('tables')">Tables</button>
+          <button class="seg-btn" onclick="switchTab('shop')">Shop</button>
+          <button class="seg-btn" onclick="switchTab('locker')">Locker</button>
+          <button class="seg-btn" onclick="switchTab('ranks')">Ranks</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="scroll-area" id="rewards-scroll">
+
+      <!-- EARN -->
+      <div class="section active" id="tab-earn">
+        <div class="daily-row">
+          <div class="daily-btn">
+            <div class="daily-btn-icon">🔥</div>
+            <div class="daily-btn-title">Daily Crumbs</div>
+            <div class="daily-btn-sub">Day 0 streak</div>
+            <button class="daily-btn-action">Claim +40 🍪</button>
+          </div>
+          <div class="daily-btn">
+            <div class="daily-btn-icon">📦</div>
+            <div class="daily-btn-title">Daily Taste Box</div>
+            <div class="daily-btn-sub">Free · 1 per day</div>
+            <button class="daily-btn-action coral" onclick="openBoxModal()">Open box</button>
+          </div>
+        </div>
+
+        <div class="sec-header mt8">
+          <div class="sec-title">Challenges</div>
+          <div class="sec-sub">Resets weekly · Sun midnight</div>
+        </div>
+
+        <div class="challenge-item" style="margin-top:8px">
+          <div class="chall-icon orange">🍜</div>
+          <div class="chall-body">
+            <div class="chall-title">Try 3 new cuisines</div>
+            <div class="chall-meta">1 of 3 spots visited</div>
+            <div class="chall-progress-track"><div class="chall-progress-fill" style="width:33%"></div></div>
+          </div>
+          <div class="chall-reward">+120 🍪</div>
+        </div>
+
+        <div class="challenge-item">
+          <div class="chall-icon coral">📸</div>
+          <div class="chall-body">
+            <div class="chall-title">Post 5 plates this week</div>
+            <div class="chall-meta">3 of 5 posted</div>
+            <div class="chall-progress-track"><div class="chall-progress-fill" style="width:60%"></div></div>
+          </div>
+          <div class="chall-reward">+80 🍪</div>
+        </div>
+
+        <div class="challenge-item">
+          <div class="chall-icon green">📍</div>
+          <div class="chall-body">
+            <div class="chall-title">Check in 4 spots</div>
+            <div class="chall-meta">4 of 4 · Complete!</div>
+            <div class="chall-progress-track"><div class="chall-progress-fill done" style="width:100%"></div></div>
+          </div>
+          <div class="chall-reward done">Claim ✓</div>
+        </div>
+
+        <div class="challenge-item">
+          <div class="chall-icon orange">👥</div>
+          <div class="chall-body">
+            <div class="chall-title">Get 10 likes on a post</div>
+            <div class="chall-meta">6 of 10 likes</div>
+            <div class="chall-progress-track"><div class="chall-progress-fill" style="width:60%"></div></div>
+          </div>
+          <div class="chall-reward">+80 🍪</div>
+        </div>
+
+        <!-- Tasting Menu -->
+        <div class="sec-header mt8">
+          <div class="sec-title">Tasting Menu</div>
+          <div class="sec-sub">Season pass — earn XP, unlock courses</div>
+        </div>
+
+        <div class="pass-card" style="margin-top:8px">
+          <span class="free-tag">Free for everyone</span>
+          <div class="pass-label">Season 1</div>
+          <div class="pass-title">Summer Bites ☀️</div>
+          <div class="pass-xp-row">
+            <span class="pass-xp-text">Season XP: 830 / 1100</span>
+            <span style="font-size:11px;color:rgba(255,255,255,0.5)">Course 3 / 12</span>
+          </div>
+          <div class="xp-bar-track" style="background:rgba(255,255,255,0.15);margin-bottom:12px"><div class="xp-bar-fill" style="width:75%"></div></div>
+          <div class="pass-track">
+            <div class="pass-course claimed"><span class="pass-course-num">1</span><span>✓</span></div>
+            <div class="pass-course claimed"><span class="pass-course-num">2</span><span>✓</span></div>
+            <div class="pass-course current"><span class="pass-course-num">3</span><span>🍪</span></div>
+            <div class="pass-course locked"><span class="pass-course-num">4</span><span>🔒</span></div>
+            <div class="pass-course locked"><span class="pass-course-num">5</span><span>🔒</span></div>
+            <div class="pass-course locked"><span class="pass-course-num">6</span><span>🔒</span></div>
+            <div class="pass-course locked"><span class="pass-course-num">7</span><span>🔒</span></div>
+            <div class="pass-course locked"><span class="pass-course-num">8</span><span>🔒</span></div>
+            <div class="pass-course locked"><span class="pass-course-num">9</span><span>🔒</span></div>
+            <div class="pass-course locked"><span class="pass-course-num">10</span><span>🔒</span></div>
+            <div class="pass-course locked"><span class="pass-course-num">11</span><span>🔒</span></div>
+            <div class="pass-course locked"><span class="pass-course-num">12</span><span>🔒</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TABLES -->
+      <div class="section" id="tab-tables">
+        <div class="table-intro">
+          <div class="table-intro-icon">🍽️</div>
+          <div class="table-intro-title">Tables — eat with your crew</div>
+          <div class="table-intro-sub">Create a private group, host challenges, earn Crumbs and a custom badge together.</div>
+        </div>
+
+        <button class="btn-coral">+ Start a Table</button>
+
+        <div class="sec-header mt4">
+          <div class="sec-title">Your Tables</div>
+        </div>
+
+        <div class="table-card" style="margin-top:8px">
+          <div class="table-card-top">
+            <div>
+              <div class="table-name">Friday Night Eats</div>
+              <div style="margin-top:4px"><span class="admin-pill">Admin</span></div>
+            </div>
+            <div class="member-avatars">
+              <div class="member-av" style="background:linear-gradient(135deg,#f093fb,#f5576c);color:white">J</div>
+              <div class="member-av" style="background:linear-gradient(135deg,#4facfe,#00f2fe);color:white">L</div>
+              <div class="member-av" style="background:linear-gradient(135deg,#43e97b,#38f9d7);color:white">C</div>
+              <div class="member-av" style="background:var(--line)">+2</div>
+            </div>
+          </div>
+          <div class="table-challenge-strip">
+            <div class="tcs-label">Active challenge</div>
+            <div class="tcs-title">Most check-ins this weekend</div>
+            <div class="tcs-meta">
+              <div class="tcs-deadline">⏱ 2 days left</div>
+              <div class="tcs-reward">🍪 150 + badge</div>
+            </div>
+            <div class="chall-progress-track" style="margin-top:8px"><div class="chall-progress-fill" style="width:40%"></div></div>
+            <div style="font-size:11px;color:var(--soft);margin-top:4px">2 of 5 check-ins · You're in 2nd place</div>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <div class="table-card-top">
+            <div>
+              <div class="table-name">Taco Tuesdays</div>
+            </div>
+            <div class="member-avatars">
+              <div class="member-av" style="background:linear-gradient(135deg,#fa709a,#fee140);color:white">M</div>
+              <div class="member-av" style="background:linear-gradient(135deg,#30cfd0,#330867);color:white">A</div>
+            </div>
+          </div>
+          <div class="table-challenge-strip">
+            <div class="tcs-label">Active challenge</div>
+            <div class="tcs-title">Post 10 taco spots this month</div>
+            <div class="tcs-meta">
+              <div class="tcs-deadline">⏱ 12 days left</div>
+              <div class="tcs-reward">🍪 200 + badge</div>
+            </div>
+            <div class="chall-progress-track" style="margin-top:8px"><div class="chall-progress-fill" style="width:70%"></div></div>
+            <div style="font-size:11px;color:var(--soft);margin-top:4px">7 of 10 posts · You're in 1st place 🥇</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SHOP -->
+      <div class="section" id="tab-shop">
+        <!-- Featured -->
+        <div class="sec-header mt4">
+          <div class="sec-title">Featured</div>
+        </div>
+        <div class="featured-hero" style="margin-top:8px">
+          <div class="hero-gradient" onclick="openBoxModal()">
+            <div class="hero-tag">✦ SIGNATURE</div>
+            <div class="hero-name">Crimson Current</div>
+            <div class="hero-sub">Profile banner · 🍪 800</div>
+          </div>
+        </div>
+
+        <!-- Cosmetics grid -->
+        <div class="sec-header mt4">
+          <div class="sec-title">Cosmetics</div>
+        </div>
+        <div class="shop-grid" style="margin-top:8px">
+          <div class="shop-item">
+            <div class="shop-item-img" style="background:linear-gradient(135deg,rgba(76,125,240,0.1),rgba(76,125,240,0.2))">🌊</div>
+            <div class="shop-item-body">
+              <div class="shop-rarity-row"><span class="rarity-pill rare">● Rare</span></div>
+              <div class="shop-type">Banner</div>
+              <div class="shop-name">Ocean Drive</div>
+              <div class="shop-price">🍪 400</div>
+            </div>
+          </div>
+          <div class="shop-item">
+            <div class="shop-item-img" style="background:linear-gradient(135deg,rgba(155,93,229,0.1),rgba(155,93,229,0.2))">⭕</div>
+            <div class="shop-item-body">
+              <div class="shop-rarity-row"><span class="rarity-pill epic">● Epic</span></div>
+              <div class="shop-type">Frame</div>
+              <div class="shop-name">Neon Ring</div>
+              <div class="shop-price">🍪 550</div>
+            </div>
+          </div>
+          <div class="shop-item">
+            <div class="shop-item-img" style="background:linear-gradient(135deg,rgba(245,166,35,0.1),rgba(245,166,35,0.2))">👑</div>
+            <div class="shop-item-body">
+              <div class="shop-rarity-row"><span class="rarity-pill legendary">● Legendary</span></div>
+              <div class="shop-type">Nameplate</div>
+              <div class="shop-name">Gold Foil</div>
+              <div class="shop-price">🍪 700</div>
+            </div>
+          </div>
+          <div class="shop-item">
+            <div class="shop-item-img" style="background:rgba(154,163,178,0.1)">🏷️</div>
+            <div class="shop-item-body">
+              <div class="shop-rarity-row"><span class="rarity-pill common">● Common</span></div>
+              <div class="shop-type">Title</div>
+              <div class="shop-name">Foodie</div>
+              <div class="shop-price owned">In Locker</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Redeem -->
+        <div class="redeem-strip" style="margin-top:12px">
+          <div class="redeem-header">
+            <div class="redeem-title">Redeem Crumbs</div>
+            <div class="redeem-see-all">See all</div>
+          </div>
+          <div class="redeem-item">
+            <div class="redeem-ico">🌮</div>
+            <div class="redeem-body">
+              <div class="redeem-name">$10 off your next visit</div>
+              <div class="redeem-sponsor">Velvet Taco · Houston</div>
+            </div>
+            <button class="redeem-btn">🍪 500</button>
+          </div>
+          <div class="redeem-item">
+            <div class="redeem-ico">☕</div>
+            <div class="redeem-body">
+              <div class="redeem-name">Free coffee + pastry</div>
+              <div class="redeem-sponsor">Doshi Coffee</div>
+            </div>
+            <button class="redeem-btn">🍪 250</button>
+          </div>
+          <div class="redeem-item">
+            <div class="redeem-ico">🎟️</div>
+            <div class="redeem-body">
+              <div class="redeem-name">Raffle: Omakase for 2</div>
+              <div class="redeem-sponsor">Monthly draw · 14 entries left</div>
+            </div>
+            <button class="redeem-btn">🍪 100</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- LOCKER -->
+      <div class="section" id="tab-locker">
+        <div class="sec-header mt4" style="margin-bottom:8px">
+          <div class="sec-title">Your Locker</div>
+          <div class="sec-sub">Tap an item to equip it</div>
+        </div>
+
+        <!-- Live preview -->
+        <div class="locker-preview">
+          <div class="locker-banner" id="preview-banner"></div>
+          <div class="locker-avatar-wrap" style="position:relative;margin:0 0 0 16px;top:-22px;display:inline-block">
+            <div class="locker-avatar" id="preview-avatar">🐶</div>
+            <div class="locker-avatar-frame" id="preview-frame"></div>
+          </div>
+          <div class="locker-profile-info" style="padding-top:8px">
+            <div class="locker-username locker-nameplate" id="preview-username">lipski·edub</div>
+            <div><span class="locker-title-chip" id="preview-title">Foodie</span></div>
+          </div>
+        </div>
+
+        <!-- Type tabs -->
+        <div class="type-tabs" style="margin-top:4px">
+          <button class="type-tab active" onclick="setLockerTab(this,'banners')">Banners</button>
+          <button class="type-tab" onclick="setLockerTab(this,'frames')">Frames</button>
+          <button class="type-tab" onclick="setLockerTab(this,'nameplates')">Nameplates</button>
+          <button class="type-tab" onclick="setLockerTab(this,'titles')">Titles</button>
+          <button class="type-tab" onclick="setLockerTab(this,'pins')">Pins</button>
+        </div>
+
+        <!-- Items grid -->
+        <div class="locker-grid" id="locker-grid">
+          <div class="locker-item equipped" onclick="equipItem(this,'banner','gradient')">
+            <div class="locker-item-img" style="background:linear-gradient(135deg,#FF5C4D,#C026A0)"></div>
+            <div class="locker-item-name">Crimson Current</div>
+            <div class="equipped-check">✓</div>
+          </div>
+          <div class="locker-item" onclick="equipItem(this,'banner','ocean')">
+            <div class="locker-item-img" style="background:linear-gradient(135deg,#4facfe,#00f2fe)"></div>
+            <div class="locker-item-name">Ocean Drive</div>
+          </div>
+          <div class="locker-item" onclick="equipItem(this,'banner','forest')">
+            <div class="locker-item-img" style="background:linear-gradient(135deg,#43e97b,#38f9d7)"></div>
+            <div class="locker-item-name">Forest Path</div>
+          </div>
+          <div class="locker-item" onclick="equipItem(this,'banner','midnight')">
+            <div class="locker-item-img" style="background:linear-gradient(135deg,#1A1F35,#2C3242)"></div>
+            <div class="locker-item-name">Midnight</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RANKS -->
+      <div class="section" id="tab-ranks">
+        <div class="ranks-top">
+          <div class="ranks-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="6"/><path d="m9 12 2 2 4-4"/><path d="M6.3 16.8a6 6 0 0 0 11.4 0"/></svg>
+          </div>
+          <div class="ranks-tier-name">Bronze · Level 2</div>
+          <div class="ranks-xp-str">830 / 1100 XP · <span style="color:var(--xp);font-weight:700">🔥 0-day streak</span></div>
+          <div class="xp-bar-lg"><div class="xp-bar-lg-fill"></div></div>
+          <div class="tier-row">
+            <div class="tier-circle current">
+              <div class="tier-icon bronze"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--bronze)"><circle cx="12" cy="8" r="6"/><path d="M6.3 16.8a6 6 0 0 0 11.4 0"/></svg></div>
+              <div class="tier-name">Bronze</div>
+            </div>
+            <div class="tier-circle">
+              <div class="tier-icon locked"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--soft)"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+              <div class="tier-name">Silver</div>
+            </div>
+            <div class="tier-circle">
+              <div class="tier-icon locked"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--soft)"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+              <div class="tier-name">Gold</div>
+            </div>
+            <div class="tier-circle">
+              <div class="tier-icon locked"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--soft)"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+              <div class="tier-name">Plat</div>
+            </div>
+            <div class="tier-circle">
+              <div class="tier-icon locked"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--soft)"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+              <div class="tier-name">Diamond</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Leaderboard / Achievements toggle -->
+        <div style="padding:0 16px;margin-bottom:10px">
+          <div class="seg-ctrl">
+            <button class="seg-btn active" id="lb-btn" onclick="toggleLb('leaderboard')">Leaderboard</button>
+            <button class="seg-btn" id="ach-btn" onclick="toggleLb('achievements')">Achievements</button>
+          </div>
+        </div>
+
+        <div id="lb-panel">
+          <div class="leaderboard-card">
+            <div class="lb-section-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              Friends
+            </div>
+            <div class="lb-row">
+              <div class="lb-rank gold">1</div>
+              <div class="lb-av" style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;font-weight:700">C</div>
+              <div class="lb-name">CharlieWolffe</div>
+              <div class="lb-xp">20,080 XP</div>
+            </div>
+            <div class="lb-row">
+              <div class="lb-rank">2</div>
+              <div class="lb-av" style="background:linear-gradient(135deg,#f093fb,#f5576c);color:white">L</div>
+              <div class="lb-name">lucyoden</div>
+              <div class="lb-xp">18,200 XP</div>
+            </div>
+            <div class="lb-row">
+              <div class="lb-rank">3</div>
+              <div class="lb-av" style="background:linear-gradient(135deg,#4facfe,#00f2fe);color:white">J</div>
+              <div class="lb-name">jledezma06</div>
+              <div class="lb-xp">15,600 XP</div>
+            </div>
+            <div class="lb-row">
+              <div class="lb-rank">4</div>
+              <div class="lb-av">_F</div>
+              <div class="lb-name">_foodiegirleats</div>
+              <div class="lb-xp">5,070 XP</div>
+            </div>
+            <div class="lb-row">
+              <div class="lb-rank">5</div>
+              <div class="lb-av">C</div>
+              <div class="lb-name">con aod</div>
+              <div class="lb-xp">5,050 XP</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="ach-panel" style="display:none">
+          <div class="leaderboard-card">
+            <div class="lb-section-title">Achievements</div>
+            <div style="text-align:center;padding:20px 0;color:var(--soft)">
+              <div style="font-size:36px;margin-bottom:8px">🏆</div>
+              <div style="font-size:14px;font-weight:600">No achievements yet</div>
+              <div style="font-size:12px;margin-top:4px">Keep your streak going to earn your first one</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /scroll-area -->
+  </div><!-- /rewards screen -->
+
+  <!-- ======================== PROFILE SCREEN ======================== -->
+  <div class="screen" id="screen-profile">
+    <div class="nav-header">
+      <div></div>
+      <div class="profile-name">lipski·edub</div>
+      <div class="profile-icons">
+        <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
+        <div class="nav-icon" style="width:30px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>
+      </div>
+    </div>
+
+    <div class="scroll-area">
+      <!-- Banner strip -->
+      <div class="profile-banner-strip"></div>
+
+      <!-- Avatar + stats row -->
+      <div style="display:flex;align-items:flex-end;padding:0 0 0 0;margin-bottom:4px">
+        <div class="profile-av-wrap" style="margin-top:0">
+          <div class="profile-av"><div style="width:100%;height:100%;background:var(--line);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:30px">🐶</div></div>
+          <div class="profile-av-frame"></div>
+        </div>
+        <div class="profile-stats-row" style="flex:1;padding:4px 16px 0 0">
+          <div class="profile-stat"><div class="profile-stat-num">61</div><div class="profile-stat-label">Posts</div></div>
+          <div class="profile-stat"><div class="profile-stat-num">45</div><div class="profile-stat-label">Friends</div></div>
+          <div class="profile-stat"><div class="profile-stat-num">13</div><div class="profile-stat-label">Locations</div></div>
+        </div>
+      </div>
+
+      <div class="profile-bio">No bio yet</div>
+
+      <div class="profile-btn-row">
+        <button class="profile-btn">Edit profile</button>
+        <button class="profile-btn">Share Profile</button>
+      </div>
+
+      <!-- Rank chip (replaces heavy TC Ranked card) -->
+      <div class="rank-chip-row">
+        <div class="rank-chip" onclick="switchScreen('rewards');switchTab('ranks')">
+          <div class="rank-chip-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="6"/><path d="M6.3 16.8a6 6 0 0 0 11.4 0"/></svg>
+          </div>
+          <div class="rank-chip-text">Bronze · Level 2</div>
+          <div class="rank-chip-crumbs">🍪 340</div>
+          <div class="rank-chip-arrow">›</div>
+        </div>
+      </div>
+
+      <!-- Posts calendar grid -->
+      <div class="profile-grid-header">
+        <div class="profile-grid-title">June 2026</div>
+        <div class="profile-month-nav">
+          <button>‹</button>
+          <button>›</button>
+          <span style="font-size:18px;cursor:pointer">📅</span>
+        </div>
+      </div>
+      <div class="posts-grid">
+        <div class="posts-grid-item" style="background:linear-gradient(135deg,#f093fb,#f5576c)"><span>18th</span></div>
+        <div class="posts-grid-item" style="background:linear-gradient(135deg,#4facfe,#00f2fe)"><span>17th</span></div>
+        <div class="posts-grid-item" style="background:linear-gradient(135deg,#43e97b,#38f9d7)"><span>13th</span></div>
+        <div class="posts-grid-item" style="background:linear-gradient(135deg,#fa709a,#fee140)"><span>10th</span></div>
+        <div class="posts-grid-item" style="background:linear-gradient(135deg,#a18cd1,#fbc2eb)"><span>7th</span></div>
+        <div class="posts-grid-item" style="background:linear-gradient(135deg,#ffecd2,#fcb69f)"><span>3rd</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================== TAB BAR ======================== -->
+  <div class="tab-bar">
+    <div class="tab-item home-active" id="tab-home" onclick="switchScreen('home')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span class="tab-label">Home</span>
+    </div>
+    <div class="tab-item" id="tab-rewards" onclick="switchScreen('rewards')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="6"/><path d="m9 8 2 2 4-4"/><path d="M6.3 16.8a6 6 0 0 0 11.4 0"/></svg>
+      <span class="tab-label">Rewards</span>
+    </div>
+    <div class="tab-item" id="tab-camera" onclick="switchScreen('home')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      <span class="tab-label">Camera</span>
+    </div>
+    <div class="tab-item" id="tab-profile" onclick="switchScreen('profile')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span class="tab-label">Profile</span>
+    </div>
+  </div>
+
+  <!-- Taste Box Modal -->
+  <div class="modal-overlay" id="box-modal" onclick="closeBoxModal(event)">
+    <div class="modal-sheet">
+      <button class="modal-close" onclick="closeBoxModal()">✕</button>
+      <div class="modal-drag"></div>
+      <div class="modal-title">🎁 Taste Box</div>
+      <div class="modal-sub">Daily free box — new cosmetics, bonus Crumbs, rare drops</div>
+      <div class="box-visual">📦</div>
+      <div class="odds-table">
+        <div class="odds-title">Published odds</div>
+        <div class="odds-row"><span class="odds-rarity" style="color:var(--common)">Common</span><span class="odds-pct">60%</span></div>
+        <div class="odds-row"><span class="odds-rarity" style="color:var(--rare)">Rare</span><span class="odds-pct">25%</span></div>
+        <div class="odds-row"><span class="odds-rarity" style="color:var(--epic)">Epic</span><span class="odds-pct">10%</span></div>
+        <div class="odds-row"><span class="odds-rarity" style="color:var(--legendary)">Legendary</span><span class="odds-pct">4%</span></div>
+        <div class="odds-row"><span class="odds-rarity" style="background:linear-gradient(90deg,var(--coral),#C026A0);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Signature</span><span class="odds-pct">1%</span></div>
+        <div style="font-size:11px;color:var(--soft);margin-top:8px;line-height:1.4">Pity timer: guaranteed Legendary+ within 50 opens. Duplicates convert to +20 🍪.</div>
+      </div>
+      <button class="modal-btn">Open your free box 📦</button>
+    </div>
+  </div>
+
+</div><!-- /device -->
+
+<script>
+function switchScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+
+  document.querySelectorAll('.tab-item').forEach(t => {
+    t.classList.remove('active', 'home-active');
+  });
+
+  const tabMap = { home: 'tab-home', rewards: 'tab-rewards', profile: 'tab-profile' };
+  if (tabMap[name]) {
+    const el = document.getElementById(tabMap[name]);
+    if (name === 'home') el.classList.add('home-active');
+    else el.classList.add('active');
+  }
+}
+
+function switchTab(name) {
+  // Activate the right screen first
+  switchScreen('rewards');
+
+  document.querySelectorAll('#rewards-seg .seg-btn').forEach((b, i) => {
+    const tabs = ['earn','tables','shop','locker','ranks'];
+    b.classList.toggle('active', tabs[i] === name);
+  });
+  document.querySelectorAll('#rewards-scroll .section').forEach(s => s.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  document.getElementById('rewards-scroll').scrollTop = 0;
+}
+
+function toggleLb(panel) {
+  const isLb = panel === 'leaderboard';
+  document.getElementById('lb-panel').style.display = isLb ? '' : 'none';
+  document.getElementById('ach-panel').style.display = isLb ? 'none' : '';
+  document.getElementById('lb-btn').classList.toggle('active', isLb);
+  document.getElementById('ach-btn').classList.toggle('active', !isLb);
+}
+
+function setLockerTab(el, type) {
+  document.querySelectorAll('.type-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+
+  const grids = {
+    banners: [
+      { bg: 'linear-gradient(135deg,#FF5C4D,#C026A0)', label: 'Crimson Current', equipped: true },
+      { bg: 'linear-gradient(135deg,#4facfe,#00f2fe)', label: 'Ocean Drive' },
+      { bg: 'linear-gradient(135deg,#43e97b,#38f9d7)', label: 'Forest Path' },
+      { bg: 'linear-gradient(135deg,#1A1F35,#2C3242)', label: 'Midnight' },
+    ],
+    frames: [
+      { bg: 'rgba(76,125,240,0.3)', label: 'Blue Halo', emoji: '⭕', equipped: true },
+      { bg: 'rgba(155,93,229,0.3)', label: 'Neon Ring', emoji: '💜' },
+      { bg: 'rgba(245,166,35,0.3)', label: 'Gold Edge', emoji: '🌟' },
+    ],
+    nameplates: [
+      { bg: 'linear-gradient(90deg,rgba(155,93,229,0.15),rgba(76,125,240,0.15))', label: 'Gradient', emoji: '✨', equipped: true },
+      { bg: 'rgba(245,166,35,0.15)', label: 'Gold Foil', emoji: '👑' },
+    ],
+    titles: [
+      { bg: 'rgba(155,93,229,0.1)', label: 'Foodie', emoji: '🍽️', equipped: true },
+      { bg: 'rgba(22,178,122,0.1)', label: 'Local Guide', emoji: '📍' },
+      { bg: 'rgba(245,166,35,0.1)', label: 'Critic', emoji: '⭐' },
+    ],
+    pins: [
+      { bg: 'rgba(76,125,240,0.1)', label: 'Ramen Pin', emoji: '🍜' },
+      { bg: 'rgba(245,130,15,0.1)', label: 'Taco Pin', emoji: '🌮', equipped: true },
+    ],
+  };
+
+  const items = grids[type] || grids.banners;
+  const grid = document.getElementById('locker-grid');
+  grid.innerHTML = items.map(item => `
+    <div class="locker-item${item.equipped ? ' equipped' : ''}" onclick="equipItem(this,'${type}','${item.label}')">
+      <div class="locker-item-img" style="background:${item.bg}">${item.emoji || ''}</div>
+      <div class="locker-item-name">${item.label}</div>
+      ${item.equipped ? '<div class="equipped-check">✓</div>' : ''}
+    </div>
+  `).join('');
+}
+
+function equipItem(el, type, value) {
+  el.closest('#locker-grid').querySelectorAll('.locker-item').forEach(i => {
+    i.classList.remove('equipped');
+    i.querySelector('.equipped-check') && i.querySelector('.equipped-check').remove();
+  });
+  el.classList.add('equipped');
+  if (!el.querySelector('.equipped-check')) {
+    const check = document.createElement('div');
+    check.className = 'equipped-check';
+    check.textContent = '✓';
+    el.appendChild(check);
+  }
+
+  const bannerGrads = {
+    'Crimson Current': 'linear-gradient(135deg,#FF5C4D,#C026A0)',
+    'Ocean Drive': 'linear-gradient(135deg,#4facfe,#00f2fe)',
+    'Forest Path': 'linear-gradient(135deg,#43e97b,#38f9d7)',
+    'Midnight': 'linear-gradient(135deg,#1A1F35,#2C3242)',
+  };
+  if (type === 'banners' && bannerGrads[value]) {
+    document.getElementById('preview-banner').style.background = bannerGrads[value];
+  }
+}
+
+function openBoxModal() {
+  document.getElementById('box-modal').classList.add('open');
+}
+function closeBoxModal(e) {
+  if (!e || e.target === document.getElementById('box-modal')) {
+    document.getElementById('box-modal').classList.remove('open');
+  }
+}
+</script>
+</body>
+</html>
